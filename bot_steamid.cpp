@@ -17,9 +17,9 @@ unsigned int HashBotName(const char* name) {
     return (hash % 899999999) + 100000000;
 }
 
-const char* Hook_SV_GetIDString(IRehldsHook_SV_GetIDString* chain, USERID_t* id_p) {
-    if (id_p && id_p->idtype == AUTH_IDTYPE_BOT) {
-        static char fakeSteamId[32];
+char* Hook_SV_GetIDString(IRehldsHook_SV_GetIDString* chain, USERID_t* id_p) {
+    if (id_p && (int)id_p->idtype == 4) {
+        static char fakeSteamId;
         const char* botName = "YaPB";
         if (g_RehldsSvs) {
             int maxClients = g_RehldsSvs->GetMaxClients();
