@@ -15,16 +15,11 @@ jobs:
           HOST="github.com"
           git clone --depth 1 "https://${HOST}/rehlds/Metamod-R.git" metamod-r
           git clone --depth 1 "https://${HOST}/rehlds/ReHLDS.git" rehlds
+          INCLUDES=$(find ./metamod-r ./rehlds -type d | sed 's/^/-I/')
           g++ -m32 -O2 -fPIC -shared -std=c++14 \
             -Dlinux -D__linux__ -DEXT_FUNC= \
             -include cstring -include cstdio \
-            -I./metamod-r/metamod/src \
-            -I./metamod-r/metamod/hlsdk/common \
-            -I./metamod-r/metamod/hlsdk/dlls \
-            -I./metamod-r/metamod/hlsdk/engine \
-            -I./metamod-r/metamod/hlsdk/pm_shared \
-            -I./rehlds/rehlds/public \
-            -I./rehlds/rehlds/public/rehlds \
+            $INCLUDES \
             bot_steamid.cpp ./rehlds/rehlds/public/interface.cpp \
             -o fbstatus_mm_i386.so
       - name: Upload Artifact
