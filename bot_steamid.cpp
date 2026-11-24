@@ -3,6 +3,7 @@
 #include <rehlds_api.h>
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 IRehldsApi* g_RehldsApi = nullptr;
 const RehldsFuncs_t* g_RehldsFuncs = nullptr;
@@ -19,7 +20,7 @@ unsigned int HashBotName(const char* name) {
 
 char* Hook_SV_GetIDString(IRehldsHook_SV_GetIDString* chain, USERID_t* id_p) {
     if (id_p && (int)id_p->idtype == 4) {
-        static char fakeSteamId;
+        static std::string fakeSteamId[32];
         const char* botName = "YaPB";
         if (g_RehldsSvs) {
             int maxClients = g_RehldsSvs->GetMaxClients();
@@ -32,8 +33,8 @@ char* Hook_SV_GetIDString(IRehldsHook_SV_GetIDString* chain, USERID_t* id_p) {
             }
         }
         unsigned int id = HashBotName(botName);
-        snprintf(fakeSteamId, 32, "STEAM_0:0:%u", id);
-        return fakeSteamId;
+        fakeSteamId = "STEAM_0:0:" + std::to_string(id);
+        return &fakeSteamId.front();
     }
     return chain->callNext(id_p);
 }
