@@ -19,10 +19,10 @@ unsigned int HashBotName(const char* name) {
 
 const char* Hook_SV_GetClientIDString(IRehldsHook_SV_GetClientIDString* chain, IGameClient* client) {
     if (client && client->IsFakeClient()) {
-        static char fakeSteamId[64];
+        static char fakeSteamId[32];
         const char* botName = client->GetName();
         unsigned int id = HashBotName(botName ? botName : "YaPB");
-        snprintf(fakeSteamId, sizeof(fakeSteamId), "STEAM_0:0:%u", id);
+        snprintf(fakeSteamId, 32, "STEAM_0:0:%u", id);
         return fakeSteamId;
     }
     return chain->callNext(client);
