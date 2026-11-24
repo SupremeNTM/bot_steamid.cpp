@@ -3,8 +3,10 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GIT_TERMINAL_PROMPT: 0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install 32-bit compiler
         run: |
           sudo dpkg --add-architecture i386
@@ -12,8 +14,8 @@ jobs:
           sudo apt-get install -y g++-multilib git
       - name: Clone SDKs and Compile
         run: |
-          git clone --depth 1 https://github.com metamod-r
-          git clone --depth 1 https://github.com rehlds
+          git clone --depth 1 https://github.com metamod-r || git clone --depth 1 https://github.com metamod-r
+          git clone --depth 1 https://github.com rehlds || git clone --depth 1 https://github.com rehlds
           g++ -m32 -O2 -fPIC -shared -std=c++14 \
             -Dlinux -D__linux__ \
             -I./metamod-r/metamod \
@@ -26,7 +28,7 @@ jobs:
             bot_steamid.cpp ./rehlds/rehlds/public/interface.cpp \
             -o fbstatus_mm_i386.so
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: fbstatus_mm_i386
           path: fbstatus_mm_i386.so
