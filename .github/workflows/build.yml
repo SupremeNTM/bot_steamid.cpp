@@ -1,0 +1,32 @@
+name: Build Metamod Module
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install 32-bit compiler
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y g++-multilib git
+      - name: Clone SDKs and Compile
+        run: |
+          git clone --depth 1 https://github.com metamod-r
+          git clone --depth 1 https://github.com rehlds
+          g++ -m32 -O2 -fPIC -shared -std=c++14 \
+            -Dlinux -D__linux__ \
+            -I./metamod-r/metamod \
+            -I./metamod-r/metamod/hlsdk/common \
+            -I./metamod-r/metamod/hlsdk/dlls \
+            -I./metamod-r/metamod/hlsdk/engine \
+            -I./metamod-r/metamod/hlsdk/pm_shared \
+            -I./rehlds/rehlds/public \
+            -I./rehlds/rehlds/public/rehlds \
+            bot_steamid.cpp ./rehlds/rehlds/public/interface.cpp \
+            -o fbstatus_mm_i386.so
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fbstatus_mm_i386
+          path: fbstatus_mm_i386.so
