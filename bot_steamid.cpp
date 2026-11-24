@@ -17,15 +17,25 @@ unsigned int HashBotName(const char* name) {
     return (hash % 899999999) + 100000000;
 }
 
-const char* Hook_SV_GetClientIDString(IRehldsHook_SV_GetClientIDString* chain, IGameClient* client) {
-    if (client && client->IsFakeClient()) {
+const char* Hook_SV_GetIDString(IRehldsHook_SV_GetIDString* chain, USERID_t* id_p) {
+    if (id_p && id_p->idtype == AUTH_IDTYPE_BOT) {
         static char fakeSteamId[32];
-        const char* botName = client->GetName();
-        unsigned int id = HashBotName(botName ? botName : "YaPB");
+        const char* botName = "YaPB";
+        if (g_RehldsSvs) {
+            int maxClients = g_RehldsSvs->GetMaxClients();
+            for (int i = 0; i < maxClients; i++) {
+                IGameClient* cl = g_RehldsSvs->GetClient(i);
+                if (cl && cl->IsConnected() && cl->GetNetworkUserID() == id_p) {
+                    botName = cl->GetName();
+                    break;
+                }
+            }
+        }
+        unsigned int id = HashBotName(botName);
         snprintf(fakeSteamId, 32, "STEAM_0:0:%u", id);
         return fakeSteamId;
     }
-    return chain->callNext(client);
+    return chain->callNext(id_p);
 }
 
 bool InitRehldsApi() {
@@ -87,13 +97,13 @@ C_DLLEXPORT int Meta_Attach(PLUG_LOADTIME now, META_FUNCTIONS* pFunctionTable, m
         return FALSE;
     }
 
-    g_RehldsHookchains->SV_GetClientIDString()->registerHook(&Hook_SV_GetClientIDString);
+    g_RehldsHookchains->SV_GetIDString()->registerHook(&Hook_SV_GetIDString);
     return TRUE;
 }
 
 C_DLLEXPORT int Meta_Detach(PLUG_LOADTIME now, PL_UNLOAD_REASON reason) {
     if (g_RehldsHookchains) {
-        g_RehldsHookchains->SV_GetClientIDString()->unregisterHook(&Hook_SV_GetClientIDString);
+        g_RehldsHookchains->SV_GetIDString()->unregisterHook(&Hook_SV_GetIDString);
     }
     return TRUE;
 }
