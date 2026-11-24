@@ -20,7 +20,7 @@ unsigned int HashBotName(const char* name) {
 
 char* Hook_SV_GetIDString(IRehldsHook_SV_GetIDString* chain, USERID_t* id_p) {
     if (id_p && (int)id_p->idtype == 4) {
-        static std::string fakeSteamId[32];
+        static std::string fakeSteamId;
         const char* botName = "YaPB";
         if (g_RehldsSvs) {
             int maxClients = g_RehldsSvs->GetMaxClients();
