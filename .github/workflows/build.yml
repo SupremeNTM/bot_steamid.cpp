@@ -3,8 +3,6 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      GIT_TERMINAL_PROMPT: 0
     steps:
       - uses: actions/checkout@v5
       - name: Install 32-bit compiler
@@ -14,8 +12,9 @@ jobs:
           sudo apt-get install -y g++-multilib git
       - name: Clone SDKs and Compile
         run: |
-          git clone --depth 1 https://github.com metamod-r || git clone --depth 1 https://github.com metamod-r
-          git clone --depth 1 https://github.com rehlds || git clone --depth 1 https://github.com rehlds
+          HOST="github.com"
+          git clone --depth 1 "https://${HOST}/rehlds/Metamod-R.git" metamod-r
+          git clone --depth 1 "https://${HOST}/rehlds/ReHLDS.git" rehlds
           g++ -m32 -O2 -fPIC -shared -std=c++14 \
             -Dlinux -D__linux__ \
             -I./metamod-r/metamod \
