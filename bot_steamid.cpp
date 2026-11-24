@@ -1,14 +1,8 @@
 #include <extdll.h>
 #include <meta_api.h>
-#include <rehlds_api.h>
 #include <cstdio>
 #include <cstring>
 #include <string>
-
-IRehldsApi* g_RehldsApi = nullptr;
-const RehldsFuncs_t* g_RehldsFuncs = nullptr;
-IRehldsHookchains* g_RehldsHookchains = nullptr;
-IRehldsServerStatic* g_RehldsSvs = nullptr;
 
 unsigned int HashBotName(const char* name) {
     unsigned int hash = 5381;
@@ -37,48 +31,19 @@ std::string ReplaceBotInStatusLine(const char* msg) {
     return line;
 }
 
-void Hook_Con_Printf(IRehldsHook_Con_Printf* chain, const char* str) {
-    if (str && strstr(str, " BOT ")) {
-        std::string modified = ReplaceBotInStatusLine(str);
-        chain->callNext(modified.c_str());
-        return;
+void Hook_ClientPrintf(edict_t* pEdict, PRINT_TYPE ptype, const char* szMsg) {
+    if (szMsg && strstr(szMsg, " BOT ")) {
+        std::string modified = ReplaceBotInStatusLine(szMsg);
+        (*g_engfuncs.pfnClientPrintf)(pEdict, ptype, modified.c_str());
+        RETURN_META(MRES_SUPERCEDE);
     }
-    chain->callNext(str);
-}
-
-void Hook_SV_ClientPrintf(IRehldsHook_SV_ClientPrintf* chain, const char* str) {
-    if (str && strstr(str, " BOT ")) {
-        std::string modified = ReplaceBotInStatusLine(str);
-        chain->callNext(modified.c_str());
-        return;
-    }
-    chain->callNext(str);
-}
-
-bool InitRehldsApi() {
-    CSysModule* engineModule = Sys_LoadModule("engine_i486.so");
-    if (!engineModule) return false;
-
-    CreateInterfaceFn ifaceFactory = Sys_GetFactory(engineModule);
-    if (!ifaceFactory) return false;
-
-    int retCode = 0;
-    g_RehldsApi = (IRehldsApi*)ifaceFactory(VREHLDS_HLDS_API_VERSION, &retCode);
-    if (!g_RehldsApi) return false;
-
-    if (g_RehldsApi->GetMajorVersion() != REHLDS_API_VERSION_MAJOR) return false;
-    if (g_RehldsApi->GetMinorVersion() < REHLDS_API_VERSION_MINOR) return false;
-
-    g_RehldsFuncs = g_RehldsApi->GetFuncs();
-    g_RehldsHookchains = g_RehldsApi->GetHookchains();
-    g_RehldsSvs = g_RehldsApi->GetServerStatic();
-    return true;
+    RETURN_META(MRES_IGNORED);
 }
 
 plugin_info_t Plugin_info = {
     META_INTERFACE_VERSION,
     "FakeBot Status",
-    "1.1",
+    "1.2",
     "2026",
     "Custom",
     "",
@@ -104,25 +69,28 @@ C_DLLEXPORT int Meta_Query(char* ifvers, plugin_info_t** pPlugInfo, mutil_funcs_
     return TRUE;
 }
 
+enginefuncs_t g_HookedEngineFuncs;
+
+C_DLLEXPORT int GetEngineFunctions(enginefuncs_t* pengfuncsFromEngine, int* interfaceVersion) {
+    if (!pengfuncsFromEngine) return FALSE;
+    if (*interfaceVersion != ENGINE_INTERFACE_VERSION) {
+        *interfaceVersion = ENGINE_INTERFACE_VERSION;
+        return FALSE;
+    }
+    memset(&g_HookedEngineFuncs, 0, sizeof(enginefuncs_t));
+    g_HookedEngineFuncs.pfnClientPrintf = Hook_ClientPrintf;
+    memcpy(pengfuncsFromEngine, &g_HookedEngineFuncs, sizeof(enginefuncs_t));
+    return TRUE;
+}
+
 C_DLLEXPORT int Meta_Attach(PLUG_LOADTIME now, META_FUNCTIONS* pFunctionTable, meta_globals_t* pMGlobals, gamedll_funcs_t* pGamedllFuncs) {
     gpMetaGlobals = pMGlobals;
     gpGamedllFuncs = pGamedllFuncs;
     memset(pFunctionTable, 0, sizeof(META_FUNCTIONS));
-
-    if (!InitRehldsApi()) {
-        LOG_CONSOLE(PLID, "[FBSTATUS] Eroare: Nu s-a putut incarca ReHLDS API!");
-        return FALSE;
-    }
-
-    g_RehldsHookchains->Con_Printf()->registerHook(&Hook_Con_Printf);
-    g_RehldsHookchains->SV_ClientPrintf()->registerHook(&Hook_SV_ClientPrintf);
+    pFunctionTable->pfnGetEngineFunctions = GetEngineFunctions;
     return TRUE;
 }
 
 C_DLLEXPORT int Meta_Detach(PLUG_LOADTIME now, PL_UNLOAD_REASON reason) {
-    if (g_RehldsHookchains) {
-        g_RehldsHookchains->Con_Printf()->unregisterHook(&Hook_Con_Printf);
-        g_RehldsHookchains->SV_ClientPrintf()->unregisterHook(&Hook_SV_ClientPrintf);
-    }
     return TRUE;
 }
