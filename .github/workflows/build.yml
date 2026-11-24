@@ -2,7 +2,7 @@ name: Build Metamod Module
 on: [push]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
       - name: Install 32-bit compiler
@@ -17,6 +17,7 @@ jobs:
           git clone --depth 1 "https://${HOST}/rehlds/ReHLDS.git" rehlds
           INCLUDES=$(find ./metamod-r ./rehlds -type d | sed 's/^/-I/')
           g++ -m32 -O2 -fPIC -shared -std=c++14 \
+            -static-libstdc++ -static-libgcc \
             -Dlinux -D__linux__ -DEXT_FUNC= \
             -include cstring -include cstdio \
             $INCLUDES \
