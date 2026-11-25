@@ -1,8 +1,8 @@
 #include <extdll.h>
 #include <meta_api.h>
-#include <cstdio>
-#include <cstring>
-#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 unsigned int HashBotName(const char* name) {
     unsigned int hash = 5381;
@@ -12,30 +12,43 @@ unsigned int HashBotName(const char* name) {
     return (hash % 899999999) + 100000000;
 }
 
-std::string ReplaceBotInStatusLine(const char* msg) {
-    std::string line(msg);
-    if (!line.empty() && line.front() == '#') {
-        size_t pos = line.find(" BOT ");
-        if (pos != std::string::npos) {
-            size_t q1 = line.find('"');
-            size_t q2 = (q1 != std::string::npos) ? line.find('"', q1 + 1) : std::string::npos;
-            std::string botName = "YaPB";
-            if (q1 != std::string::npos && q2 != std::string::npos && q2 > q1 + 1) {
-                botName = line.substr(q1 + 1, q2 - q1 - 1);
-            }
-            unsigned int id = HashBotName(botName.c_str());
-            std::string fakeId = " STEAM_0:0:" + std::to_string(id) + " ";
-            line.replace(pos, 5, fakeId);
-        }
-    }
-    return line;
-}
-
 void Hook_ClientPrintf(edict_t* pEdict, PRINT_TYPE ptype, const char* szMsg) {
-    if (szMsg && strstr(szMsg, " BOT ")) {
-        std::string modified = ReplaceBotInStatusLine(szMsg);
-        (*g_engfuncs.pfnClientPrintf)(pEdict, ptype, modified.c_str());
-        RETURN_META(MRES_SUPERCEDE);
+    if (szMsg && *szMsg == '#') {
+        const char* botPos = strstr(szMsg, " BOT ");
+        if (botPos) {
+            static char* outBuf = nullptr;
+            static char* botName = nullptr;
+            static char* midBuf = nullptr;
+            if (!outBuf) outBuf = (char*)malloc(512);
+            if (!botName) botName = (char*)malloc(64);
+            if (!midBuf) midBuf = (char*)malloc(64);
+
+            strcpy(botName, "YaPB");
+            const char* q1 = strchr(szMsg, '"');
+            if (q1) {
+                const char* q2 = strchr(q1 + 1, '"');
+                if (q2 && q2 > q1 + 1) {
+                    size_t len = (size_t)(q2 - (q1 + 1));
+                    if (len > 63) len = 63;
+                    memcpy(botName, q1 + 1, len);
+                    *(botName + len) = '\0';
+                }
+            }
+
+            unsigned int id = HashBotName(botName);
+            size_t prefixLen = (size_t)(botPos - szMsg);
+            if (prefixLen > 200) prefixLen = 200;
+
+            memcpy(outBuf, szMsg, prefixLen);
+            *(outBuf + prefixLen) = '\0';
+
+            snprintf(midBuf, 64, " STEAM_0:0:%u ", id);
+            strcat(outBuf, midBuf);
+            strncat(outBuf, botPos + 5, 511 - strlen(outBuf));
+
+            (*g_engfuncs.pfnClientPrintf)(pEdict, ptype, outBuf);
+            RETURN_META(MRES_SUPERCEDE);
+        }
     }
     RETURN_META(MRES_IGNORED);
 }
@@ -43,7 +56,7 @@ void Hook_ClientPrintf(edict_t* pEdict, PRINT_TYPE ptype, const char* szMsg) {
 plugin_info_t Plugin_info = {
     META_INTERFACE_VERSION,
     "FakeBot Status",
-    "1.2",
+    "1.3",
     "2026",
     "Custom",
     "",
