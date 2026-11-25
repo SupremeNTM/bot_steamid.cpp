@@ -9,20 +9,19 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y g++-multilib git
+          sudo apt-get install -y gcc-multilib g++-multilib git binutils
       - name: Clone SDKs and Compile
         run: |
           HOST="github.com"
           git clone --depth 1 "https://${HOST}/rehlds/Metamod-R.git" metamod-r
           git clone --depth 1 "https://${HOST}/rehlds/ReHLDS.git" rehlds
           INCLUDES=$(find ./metamod-r ./rehlds -type d | sed 's/^/-I/')
-          g++ -m32 -O2 -fPIC -shared -std=c++14 \
-            -static-libstdc++ -static-libgcc \
+          gcc -m32 -O2 -fPIC -shared -fno-exceptions -fno-rtti \
             -Dlinux -D__linux__ -DEXT_FUNC= \
-            -include cstring -include cstdio \
             $INCLUDES \
-            bot_steamid.cpp ./rehlds/rehlds/public/interface.cpp \
+            bot_steamid.cpp \
             -o fbstatus_mm_i386.so
+          objdump -T fbstatus_mm_i386.so | grep GLIBC || true
       - name: Upload Artifact
         uses: actions/upload-artifact@v5
         with:
